@@ -18,29 +18,47 @@ IChatClient chatClient = new AzureOpenAIClient(
      .GetChatClient(deploymentName)
      .AsIChatClient();
 
-// Response format to ensure the output is structured.
-var responseFormat = "{\"type\":\"json_schema\",\"json_schema\":{\"name\":\"assistant_response\",\"strict\":true,\"schema\":{\"$schema\":\"http://json-schema.org/draft-07/schema#\",\"type\":\"object\",\"properties\":{\"language\":{\"type\":\"string\",\"description\":\"The language of the answer.\"},\"answer\":{\"type\":\"string\",\"description\":\"The answer text.\"}},\"required\":[\"language\",\"answer\"],\"additionalProperties\":false}}}";
-
 // Define the agent using a YAML definition.
 var text =
-    $"""
-    kind: GptComponentMetadata
+    """
+    kind: Prompt
     type: chat_client_agent
-    name: Assistant
-    description: Helpful assistant
-    instructions: You are a helpful assistant. You answer questions is the language specified by the user. You return your answers in a JSON format.
+    id: my_translation_agent
+    name: Translation Assistant
+    description: A helpful assistant that translates text to a specified language.
     model:
-      options:
-        temperature: 0.9
-        top_p: 0.95
-        response_format: {responseFormat}
+        kind: OpenAIResponsesModel
+        id: gpt-4o
+        options:
+            temperature: 0.9
+            topP: 0.95
+    instructions: You are a helpful assistant. You answer questions in {language}. You return your answers in a JSON format.
+    additionalInstructions: You must always respond in the specified language.
+    tools:
+      - kind: codeInterpreter
+    template:
+        format: PowerFx # Mustache is the other option
+        parser: None # Prompty and XML are the other options
+    inputSchema:
+        properties:
+            language: string
+    outputSchema:
+        properties:
+            language:
+                type: string
+                required: true
+                description: The language of the answer.
+            answer:
+                type: string
+                required: true
+                description: The answer text.
     """;
 
 // Alternatively, you can define the response format using as YAML for better readability.
 /*
 var textYaml =
     """
-    kind: GptComponentMetadata
+    kind: PromptAgent
     type: chat_client_agent
     name: Assistant
     description: Helpful assistant
@@ -76,10 +94,10 @@ var agentFactory = new ChatClientAgentFactory();
 var agent = await agentFactory.CreateFromYamlAsync(text, new() { ChatClient = chatClient });
 
 // Invoke the agent and output the text result.
-Console.WriteLine(await agent!.RunAsync("Tell me a joke about a pirate in English."));
+Console.WriteLine(await agent!.RunAsync("Tell me a joke about a pirate."));
 
 // Invoke the agent with streaming support.
-await foreach (var update in agent!.RunStreamingAsync("Tell me a joke about a pirate in French."))
+await foreach (var update in agent!.RunStreamingAsync("Tell me a joke about a pirate."))
 {
-    Console.WriteLine(update);
+    Console.Write(update);
 }

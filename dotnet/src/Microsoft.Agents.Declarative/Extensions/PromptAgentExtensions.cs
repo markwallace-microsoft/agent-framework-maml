@@ -39,6 +39,8 @@ public static class PromptAgentExtensions
     {
         Throw.IfNull(promptAgent);
 
+        OpenAIResponsesModel? model = promptAgent.Model as OpenAIResponsesModel;
+
         var aiSettings = promptAgent.AISettings;
         var tools = promptAgent.GetAITools();
         if (aiSettings is null && tools is null)
@@ -50,9 +52,9 @@ public static class PromptAgentExtensions
         {
             ConversationId = aiSettings?.ExtensionData?.GetString("conversation_id"),
             Instructions = promptAgent.AdditionalInstructions?.ToTemplateString(),
-            Temperature = (float?)aiSettings?.ExtensionData?.GetNumber("temperature"),
+            Temperature = (float?)model?.Options?.Temperature.LiteralValue,
             MaxOutputTokens = (int?)aiSettings?.ExtensionData?.GetNumber("max_output_tokens"),
-            TopP = (float?)aiSettings?.ExtensionData?.GetNumber("top_p"),
+            TopP = (float?)model?.Options?.TopP.LiteralValue,
             TopK = (int?)aiSettings?.ExtensionData?.GetNumber("top_k"),
             FrequencyPenalty = (float?)aiSettings?.ExtensionData?.GetNumber("frequency_penalty"),
             PresencePenalty = (float?)aiSettings?.ExtensionData?.GetNumber("presence_penalty"),
@@ -75,7 +77,7 @@ public static class PromptAgentExtensions
     {
         return promptAgent.Tools.Select<AgentTool, AITool>(tool =>
         {
-            var type = tool.ExtensionData?.GetString("type");
+            var type = tool.Kind.ToString();
             return type switch
             {
                 CodeInterpreterType => tool.CreateCodeInterpreterTool(),
@@ -89,11 +91,11 @@ public static class PromptAgentExtensions
     }
 
     #region private
-    private const string CodeInterpreterType = "code_interpreter";
-    private const string FileSearchType = "file_search";
-    private const string FunctionType = "function";
-    private const string WebSearchType = "web_search";
-    private const string McpType = "mcp";
+    private const string CodeInterpreterType = "CodeInterpreterTool";
+    private const string FileSearchType = "FileSearchTool";
+    private const string FunctionType = "FunctionTool";
+    private const string WebSearchType = "WebSearchTool";
+    private const string McpType = "McpTool";
 
     private static readonly string[] s_validToolTypes =
     [
